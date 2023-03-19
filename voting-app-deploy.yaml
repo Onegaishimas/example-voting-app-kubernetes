@@ -1,4 +1,212 @@
----
+--- #voting-ns
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: voting-ns
+
+--- #worker-deploy
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deploy
+  namespace: voting-ns
+  labels:
+    name: worker-deploy
+    app: worker-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: worker-app-pod
+      app: worker-app
+  template:
+    metadata:
+      name: worker-app-pod
+      namespace: voting-ns
+      labels:
+        name: worker-app-pod
+        app: worker-app
+    spec:
+      containers:
+      - name: worker-app
+        image: kodekloud/examplevotingapp_worker:v1
+
+--- #redis-deploy
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deploy
+  namespace: voting-ns
+  labels:
+    name: redis-deploy
+    app: voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: redis-pod
+      app: voting-app
+  template:
+    metadata:
+      name: redis-pod
+      namespace: voting-ns
+      labels:
+        name: redis-pod
+        app: voting-app
+    spec:
+      containers:
+      - name: redis
+        image: redis
+        ports:
+        - containerPort: 6379
+
+--- #redis-svc
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: voting-ns
+  labels:
+    name: redis-svc
+    app: voting-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    name: redis-pod
+    app: voting-app
+
+--- #postgres-deploy
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deploy
+  namespace: voting-ns
+  labels:
+    name: postgres-deploy
+    app: postgres-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: postgres-pod
+      app: postgres-app
+  template:
+    metadata:
+      name: postgres-pod
+      namespace: voting-ns
+      labels:
+        name: postgres-pod
+        app: postgres-app
+    spec:
+      containers:
+      - name: postgres
+        image: postgres
+        ports:
+        - containerPort: 5432
+        env:
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_PASSWORD
+            value: "postgres"
+          - name: POSTGRES_HOST_AUTH_METHOD
+            value: trust
+
+--- #postgres-svc
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: voting-ns
+  labels:
+    name: postgres-svc
+    app: postgres-app
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    name: postgres-pod
+    app: postgres-app
+
+--- #result-deploy
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-deploy
+  namespace: voting-ns
+  labels:
+    name: result-deploy
+    app: result-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: result-pod
+      app: result-app
+  template:
+    metadata:
+      name: result-pod
+      namespace: voting-ns
+      labels:
+        name: result-pod
+        app: result-app
+    spec:
+      containers:
+      - name: result-app
+        image: kodekloud/examplevotingapp_result:v1
+        ports:
+        - containerPort: 80
+
+--- #result-svc
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-svc
+  namespace: voting-ns
+  labels:
+    name: result-svc
+    app: result-app
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    name: result-pod
+    app: result-app
+
+--- #result-ingress
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: result-ingress
+  namespace: voting-ns
+spec:
+  rules:
+  - host: result.mcslab.io 
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: result-svc
+            port: 
+              number: 80
+
+--- #voting-deploy
 
 apiVersion: apps/v1
 kind: Deployment
@@ -28,7 +236,7 @@ spec:
         ports:
         - containerPort: 80
 
----
+--- #voting-svc
 
 apiVersion: v1
 kind: Service
@@ -47,7 +255,7 @@ spec:
     name: voting-pod
     app: voting-app
 
----
+--- #voting-ingress
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -66,3 +274,4 @@ spec:
             name: voting-svc
             port: 
               number: 80
+
