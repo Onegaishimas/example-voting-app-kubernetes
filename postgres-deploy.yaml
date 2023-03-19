@@ -17,13 +17,13 @@ spec:
   template:
     metadata:
       name: postgres-pod
+      namespace: voting-ns
       labels:
         name: postgres-pod
         app: postgres-app
     spec:
       containers:
       - name: postgres
-        namespace: voting-ns
         image: postgres
         ports:
         - containerPort: 5432
